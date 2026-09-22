@@ -1,5 +1,9 @@
 # LatentComBat
 
+[![R-CMD-check](https://github.com/Zheng206/LatentComBat/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Zheng206/LatentComBat/actions/workflows/R-CMD-check.yaml)
+
+[![test-coverage](https://github.com/Zheng206/LatentComBat/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/Zheng206/LatentComBat/actions/workflows/test-coverage.yaml)
+
 `LatentComBat` is an R package for harmonizing high-dimensional data across observed batches while accounting for latent technical variation.
 
 The package supports two complementary workflows:
