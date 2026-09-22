@@ -19,7 +19,6 @@ RoxygenNote: 7.3.2
 Imports:
     broom,
     car,
-    cmdstanr,
     dplyr,
     ggplot2,
     grid,
@@ -32,6 +31,7 @@ Imports:
     rlang,
     tidyr
 Suggests:
+    cmdstanr,
     covr,
     testthat (>= 3.0.0)
 Additional_repositories:

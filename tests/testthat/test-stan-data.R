@@ -1,3 +1,4 @@
+testthat::skip_if_not_installed("cmdstanr")
 test_that("univariate Stan data are flattened consistently", {
   Y <- matrix(1:12, nrow = 4, ncol = 3)
   colnames(Y) <- paste0("g", 1:3)

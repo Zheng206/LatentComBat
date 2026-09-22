@@ -1,3 +1,4 @@
+testthat::skip_if_not_installed("cmdstanr")
 make_fake_cmdstan_fit <- function(model = c("latent", "univariate"), bad = FALSE) {
   model <- match.arg(model)
 
