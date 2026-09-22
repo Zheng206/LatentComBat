@@ -2,6 +2,8 @@ Package: LatentComBat
 Type: Package
 Title: Latent-Aware Batch Harmonization
 Version: 0.0.0.9001
+Depends:
+    R (>= 4.1.0)
 Authors@R: person("Zheng", "Ren", role = c("aut", "cre"), email = "zren1422@gmail.com")
 Author: Zheng Ren [aut, cre]
 Maintainer: Zheng Ren <zren1422@gmail.com>
