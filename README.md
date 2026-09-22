@@ -1,8 +1,6 @@
 # LatentComBat
 
-[![R-CMD-check](https://github.com/Zheng206/LatentComBat/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Zheng206/LatentComBat/actions/workflows/R-CMD-check.yaml)
-
-[![codecov](https://codecov.io/gh/Zheng206/LatentComBat/branch/main/graph/badge.svg)](https://codecov.io/gh/Zheng206/LatentComBat)
+[![R-CMD-check](https://github.com/Zheng206/LatentComBat/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Zheng206/LatentComBat/actions/workflows/R-CMD-check.yaml) [![codecov](https://codecov.io/gh/Zheng206/LatentComBat/branch/main/graph/badge.svg)](https://codecov.io/gh/Zheng206/LatentComBat)
 
 `LatentComBat` is an R package for harmonizing high-dimensional data across observed batches while accounting for latent technical variation.
 

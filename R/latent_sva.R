@@ -517,6 +517,10 @@ select_k_var_parallel <- function(Z_resid,
   Z_resid <- as.matrix(Z_resid)
   set.seed(seed)
 
+  if (nrow(Z_resid) == 0L || ncol(Z_resid) == 0L || as.integer(k_max) <= 0L) {
+    return(list(k = 0L, d_obs = numeric(0), thr = numeric(0)))
+  }
+
   sv_obs <- svd(Z_resid, nu = 0, nv = 0)$d
   k_max  <- min(as.integer(k_max), length(sv_obs))
 
