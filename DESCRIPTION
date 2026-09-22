@@ -35,5 +35,5 @@ Suggests:
     covr,
     testthat (>= 3.0.0)
 Additional_repositories:
-    https://mc-stan.org/r-packages/
+    https://stan-dev.r-universe.dev
 Config/testthat/edition: 3
