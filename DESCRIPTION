@@ -1,0 +1,36 @@
+Package: LatentComBat
+Type: Package
+Title: Latent-Aware Batch Harmonization
+Version: 0.0.0.9001
+Authors@R: person("Zheng", "Ren", role = c("aut", "cre"), email = "zren1422@gmail.com")
+Author: Zheng Ren [aut, cre]
+Maintainer: Zheng Ren <zren1422@gmail.com>
+Description: Tools for harmonizing high-dimensional data across observed batch
+    effects while accounting for latent technical variation. The package
+    includes a sequential surrogate-variable plus ComBat workflow and a joint
+    Bayesian latent ComBat workflow, with optional protected biological
+    covariate spaces, latent variance stabilization, and optional uncertainty-
+    aware post-harmonization inference via Bayesian posterior propagation or a
+    full-pipeline bootstrap for the sequential workflow.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    broom,
+    car,
+    cmdstanr,
+    dplyr,
+    ggplot2,
+    grid,
+    lme4,
+    mgcv,
+    pbkrtest,
+    purrr,
+    scales,
+    Rtsne,
+    rlang,
+    tidyr
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

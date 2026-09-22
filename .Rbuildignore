@@ -1,0 +1,10 @@
+^LatentComBat\.Rproj$
+^\.Rproj\.user$
+^\.DS_Store$
+^README_REFRACTOR\.md$
+
+^REFACTOR_NOTES\.md$
+^\.Rhistory$
+^LatentComBat\.Rcheck$
+^inst/stan/combat_sva_cross$
+^\.github$
