@@ -129,6 +129,7 @@ test_that("when both branches are enabled SVA output feeds variance stabilizatio
 })
 
 test_that("Bayesian workflow can be tested without running CmdStan", {
+  testthat::skip_if_not_installed("cmdstanr")
   fx <- make_lc_fixture(n_per_batch = 8L, p = 4L)
 
   fake_detect <- function(R, Z, B, alpha) {
