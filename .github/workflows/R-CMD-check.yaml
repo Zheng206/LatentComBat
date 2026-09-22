@@ -47,7 +47,7 @@ jobs:
         with:
           extra-packages: |
             any::rcmdcheck
-            stan::cmdstanr
+            cmdstanr
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
