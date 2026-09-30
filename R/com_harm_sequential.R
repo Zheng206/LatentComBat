@@ -85,10 +85,15 @@ com_harm.sequential <- function(
     iter_warmup = 1000,
     max_treedepth = 12,
     keep_inference_data = TRUE,
+    variance_formula = NULL,
     ...
 ) {
   original_data <- as.matrix(data)
   extra_args <- list(...)
+
+  if (!is.null(variance_formula) && !isTRUE(var_stable)) {
+    stop("Set `var_stable = TRUE` when using `variance_formula`.")
+  }
 
   batch_result <- batch_matrix(bat, ref.batch = ref.batch)
 
@@ -132,6 +137,7 @@ com_harm.sequential <- function(
       batch_result = batch_result,
       model = model,
       formula = formula,
+      variance_formula = variance_formula,
       ...
     )
 
@@ -179,6 +185,7 @@ com_harm.sequential <- function(
       max_rblock = max_rblock,
       sva = sva,
       var_stable = var_stable,
+      variance_formula = variance_formula,
       protected_covar = protected_covar,
       adapt_delta = adapt_delta,
       iter_sampling = iter_sampling,

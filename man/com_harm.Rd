@@ -33,6 +33,7 @@ com_harm(
   iter_warmup = 1000,
   max_treedepth = 12,
   keep_inference_data = TRUE,
+  variance_formula = NULL,
   ...
 )
 }
@@ -123,6 +124,11 @@ difficult to explore, at the cost of additional computation. Defaults to
 \item{keep_inference_data}{Logical indicating whether the original inputs and
 harmonization settings needed by \code{\link[=harm_inference]{harm_inference()}} should be stored in the
 fitted object. Defaults to \code{TRUE}.}
+
+\item{variance_formula}{Optional one-sided formula for covariate effects in
+the sequential log-variance working model, such as
+\code{~ splines::ns(AGE, df = 3) + SEX}. Variables must be columns of \code{covar}.
+This term is retained when correcting latent variance; defaults to \code{NULL}.}
 
 \item{...}{Additional arguments passed to lower-level model-fitting and
 harmonization functions.}

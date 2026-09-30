@@ -531,6 +531,7 @@ select_k_var_parallel <- function(Z_resid,
   null_d <- matrix(0, nrow = as.integer(B_perm), ncol = k_max)
   for (b in seq_len(as.integer(B_perm))) {
     Zp <- apply(Z_resid, 2, sample)
+    Zp <- matrix(Zp, nrow = nrow(Z_resid), ncol = ncol(Z_resid))
     if (!is.null(qr_batch)) {Zp <- qr.resid(qr_batch, Zp)}
     null_d[b, ] <- svd(Zp, nu = 0, nv = 0)$d[seq_len(k_max)]
   }

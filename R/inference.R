@@ -245,6 +245,7 @@ combine_harm_draw_inference <- function(
     max_rblock = info$max_rblock,
     sva = info$sva,
     var_stable = info$var_stable,
+    variance_formula = info$variance_formula,
     protected_covar = protected_b,
     keep_inference_data = FALSE
   )

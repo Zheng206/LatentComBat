@@ -41,6 +41,10 @@
 #' @param var_stable Logical indicating whether latent variance stabilization
 #'   is applied before the final ComBat step. This option is independent of
 #'   `sva`. Defaults to `FALSE`.
+#' @param variance_formula Optional one-sided formula for covariate effects in
+#'   the sequential log-variance working model, such as
+#'   `~ splines::ns(AGE, df = 3) + SEX`. Variables must be columns of `covar`.
+#'   This term is retained when correcting latent variance; defaults to `NULL`.
 #' @param protected_covar Optional additional covariates or protected subspace
 #'   used to reduce removal of preserved biological variation.
 #' @param posterior_draws Number of posterior harmonized-data draws to retain
@@ -108,6 +112,7 @@ com_harm <- function(
     iter_warmup = 1000,
     max_treedepth = 12,
     keep_inference_data = TRUE,
+    variance_formula = NULL,
     ...
 ) {
   if (is.null(method)) {
@@ -117,6 +122,13 @@ com_harm <- function(
     if (isTRUE(bayes_sva) && method != "bayesian") {
       warning("`method` overrides legacy `bayes_sva = TRUE`.", call. = FALSE)
     }
+  }
+
+  if (!is.null(variance_formula) && method == "bayesian") {
+    stop("`variance_formula` is available only for the sequential method.")
+  }
+  if (!is.null(variance_formula) && !isTRUE(var_stable)) {
+    stop("Set `var_stable = TRUE` when using `variance_formula`.")
   }
 
   if (method == "bayesian") {
@@ -135,7 +147,8 @@ com_harm <- function(
     formula = formula, ref.batch = ref.batch, eb = eb, stan = stan,
     robust.LS = robust.LS, cov = cov, var_thresh = var_thresh,
     min_rblock = min_rblock, max_rblock = max_rblock, sva = sva,
-    var_stable = var_stable, protected_covar = protected_covar,
+    var_stable = var_stable, variance_formula = variance_formula,
+    protected_covar = protected_covar,
     keep_inference_data = keep_inference_data, adapt_delta = adapt_delta, iter_sampling = iter_sampling,
     iter_warmup = iter_warmup, max_treedepth = max_treedepth, ...)
 }

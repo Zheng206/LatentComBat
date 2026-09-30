@@ -166,6 +166,28 @@ fit_latent <- com_harm(
 
 When both are enabled, latent mean adjustment is performed first, followed by latent variance stabilization and then primary-batch ComBat.
 
+To retain specified covariate effects in the log-variance model during the
+latent variance step, pass a one-sided formula using columns of `covar`:
+
+```r
+fit_scale_protected <- com_harm(
+  bat = site, data = Y, covar = covar,
+  formula = y ~ age + sex,
+  method = "sequential", sva = TRUE, var_stable = TRUE,
+  variance_formula = ~ splines::ns(age, df = 3) + sex
+)
+
+fit_scale_protected$variance$variance_design_columns
+fit_scale_protected$variance$coef_bio  # per-feature log-variance coefficients
+```
+
+The fitted covariate scale term is included in the variance model but excluded
+from the latent correction. This protects its modeled pattern during the
+latent variance stage; the later ComBat step can still change scale
+associations. If the requested design is aliased with batch, the fit stops
+because those effects cannot be separated. With `variance_formula = NULL`, the
+original variance stabilization procedure is used.
+
 ## Covariance diagnostics and CovBat
 
 Batch effects may remain in cross-feature covariance even after location/scale correction. LatentComBat provides tools to examine this directly.
