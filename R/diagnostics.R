@@ -84,6 +84,7 @@ diag_model_summary.lm_model <- function(diag_model, ...){
 }
 
 
+
 #' @rdname diag_model_summary
 #'
 #' @method diag_model_summary gam_model
@@ -274,7 +275,7 @@ anova_test <- function(diag_model, batch) {
   fits <- diag_model$fits
   p_raw <- sapply(fits, function(fit) {
     full_model <- fit
-    reduced_model <- update(full_model, . ~ . - batch)
+    reduced_model <- update(full_model, . ~ . - batch + 1)
 
     if (inherits(full_model, "gam")) {
       anova_tab <- mgcv::anova.gam(reduced_model, full_model, test = "F")
@@ -1091,6 +1092,4 @@ plot_pc_assoc_heatmap <- function(
       plot.margin = margin(10, 15, 10, 10)
     )
 }
-
-
 

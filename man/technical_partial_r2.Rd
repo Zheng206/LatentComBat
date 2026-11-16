@@ -12,6 +12,7 @@ technical_partial_r2(
   model = stats::lm,
   formula = y ~ 1,
   adjust_batch = TRUE,
+  test = c("separate", "joint"),
   ...
 )
 }
@@ -20,7 +21,8 @@ technical_partial_r2(
 imaging features in columns.}
 
 \item{technical}{Data frame of secondary technical factors. Its columns are
-tested one at a time and all columns are included in the full model.}
+tested one at a time. Whether other technical columns enter the models
+is controlled by \code{test}.}
 
 \item{covar}{Optional data frame of protected biological covariates.}
 
@@ -35,6 +37,12 @@ For example, \code{y ~ s(age, k = 5) + sex}. Predictors must belong to \code{cov
 \code{.} expands to all biological covariates.}
 
 \item{adjust_batch}{Whether to condition on primary batch. Defaults to \code{TRUE}.}
+
+\item{test}{Either \code{"separate"} (default), testing each technical factor
+conditional on all other technical factors, or \code{"joint"}, comparing biology
+plus optional batch against biology plus optional batch plus that factor
+alone. In \code{"joint"} mode, no other secondary technical factors are adjusted
+for; this option does not test the entire technical block together.}
 
 \item{...}{Additional arguments passed to \code{model}. Fits must retain the
 supplied analysis sample; arguments that drop rows are not supported.}
@@ -51,17 +59,36 @@ one design dimension; it does not guarantee every coefficient is identified.
 Unknown diagnostics are \code{NA}. Original metadata names are retained.
 \code{status} is one of \code{"ok"}, \code{"negative"}, \code{"non_estimable"}, \code{"zero_rss"},
 or \code{"fit_error"}. The \code{error} column preserves fitting error messages.
+Both modes return one row per feature and technical factor, preserving the
+original technical names.
+Attributes \code{test} and \code{technical_factors} record the test mode and original
+technical column names. Both modes work with \code{\link[=summarize_r2]{summarize_r2()}} and
+\code{\link[=plot_technical_r2]{plot_technical_r2()}}. The \code{formula} attribute contains the full-model
+formula in separate mode or a named list of per-factor full-model formulas
+in joint mode.
 }
 \description{
 Computes the additional residual variation explained by each technical
-factor, conditional on the biological covariates, other technical factors,
-and (by default) primary batch.
+factor, conditional on biological covariates and (by default) primary batch,
+with optional adjustment for the other secondary technical factors.
 }
 \details{
 The measure is \code{(rss_reduced - rss_full) / rss_reduced}. Both models use the
-same complete cases of the variables in the full formula, separately for
-each feature. Unused covariates do not affect this sample. The full model
-is fitted once per feature.
+same complete cases of the variables in their full formula. Unused covariates
+do not affect this sample.
+
+In separate mode, the reduced model drops only the tested technical factor.
+All technical factors enter the full model, which is fitted once per feature.
+Complete cases are common to all factors within that feature.
+
+In joint mode, each factor is added individually to a baseline containing
+only biology and optional primary batch. For factor \code{T_k}, the comparison is
+\code{y ~ biology + batch} versus \code{y ~ biology + batch + T_k} (omitting batch
+when \code{adjust_batch = FALSE}). This includes associations shared with other
+secondary technical factors. Complete cases are selected per feature and
+tested factor; missingness in other technical columns does not remove rows.
+Contributions of correlated technical factors can overlap and should not be
+summed. In either mode, a factor adding no design dimension gives \code{NA}.
 
 For nested ordinary least-squares models this is conventional partial
 R-squared. For penalized GAMs, smoothing parameters may change between fits,
@@ -75,6 +102,14 @@ it can be insensitive to removal of additive batch means. Setting
 \code{adjust_batch = FALSE} also includes variation shared with batch. Neither
 measure is causal. Before/after changes can reflect changes in both explained
 and residual variation, so assess biological preservation separately.
+}
+\examples{
+set.seed(1)
+technical <- data.frame(scanner = rnorm(30), field = rnorm(30))
+data <- cbind(feature1 = technical$scanner + rnorm(30), feature2 = rnorm(30))
+joint <- technical_partial_r2(data, technical, adjust_batch = FALSE,
+                              test = "joint")
+summarize_r2(joint, method = "Raw")
 }
 \seealso{
 \code{\link[=summarize_r2]{summarize_r2()}} for readable feature summaries and

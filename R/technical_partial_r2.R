@@ -1,13 +1,14 @@
 #' Compute Technical-Factor Partial R-Squared
 #'
 #' Computes the additional residual variation explained by each technical
-#' factor, conditional on the biological covariates, other technical factors,
-#' and (by default) primary batch.
+#' factor, conditional on biological covariates and (by default) primary batch,
+#' with optional adjustment for the other secondary technical factors.
 #'
 #' @param data Numeric matrix or data frame with observations in rows and
 #'   imaging features in columns.
 #' @param technical Data frame of secondary technical factors. Its columns are
-#'   tested one at a time and all columns are included in the full model.
+#'   tested one at a time. Whether other technical columns enter the models
+#'   is controlled by `test`.
 #' @param covar Optional data frame of protected biological covariates.
 #' @param bat Vector identifying the primary batch. Required when
 #'   `adjust_batch = TRUE`.
@@ -17,6 +18,11 @@
 #'   For example, `y ~ s(age, k = 5) + sex`. Predictors must belong to `covar`;
 #'   `.` expands to all biological covariates.
 #' @param adjust_batch Whether to condition on primary batch. Defaults to `TRUE`.
+#' @param test Either `"separate"` (default), testing each technical factor
+#'   conditional on all other technical factors, or `"joint"`, comparing biology
+#'   plus optional batch against biology plus optional batch plus that factor
+#'   alone. In `"joint"` mode, no other secondary technical factors are adjusted
+#'   for; this option does not test the entire technical block together.
 #' @param ... Additional arguments passed to `model`. Fits must retain the
 #'   supplied analysis sample; arguments that drop rows are not supported.
 #'
@@ -31,12 +37,31 @@
 #'   Unknown diagnostics are `NA`. Original metadata names are retained.
 #'   `status` is one of `"ok"`, `"negative"`, `"non_estimable"`, `"zero_rss"`,
 #'   or `"fit_error"`. The `error` column preserves fitting error messages.
+#'   Both modes return one row per feature and technical factor, preserving the
+#'   original technical names.
+#'   Attributes `test` and `technical_factors` record the test mode and original
+#'   technical column names. Both modes work with [summarize_r2()] and
+#'   [plot_technical_r2()]. The `formula` attribute contains the full-model
+#'   formula in separate mode or a named list of per-factor full-model formulas
+#'   in joint mode.
 #'
 #' @details
 #' The measure is `(rss_reduced - rss_full) / rss_reduced`. Both models use the
-#' same complete cases of the variables in the full formula, separately for
-#' each feature. Unused covariates do not affect this sample. The full model
-#' is fitted once per feature.
+#' same complete cases of the variables in their full formula. Unused covariates
+#' do not affect this sample.
+#'
+#' In separate mode, the reduced model drops only the tested technical factor.
+#' All technical factors enter the full model, which is fitted once per feature.
+#' Complete cases are common to all factors within that feature.
+#'
+#' In joint mode, each factor is added individually to a baseline containing
+#' only biology and optional primary batch. For factor `T_k`, the comparison is
+#' `y ~ biology + batch` versus `y ~ biology + batch + T_k` (omitting batch
+#' when `adjust_batch = FALSE`). This includes associations shared with other
+#' secondary technical factors. Complete cases are selected per feature and
+#' tested factor; missingness in other technical columns does not remove rows.
+#' Contributions of correlated technical factors can overlap and should not be
+#' summed. In either mode, a factor adding no design dimension gives `NA`.
 #'
 #' For nested ordinary least-squares models this is conventional partial
 #' R-squared. For penalized GAMs, smoothing parameters may change between fits,
@@ -53,11 +78,19 @@
 #'
 #' @seealso [summarize_r2()] for readable feature summaries and
 #'   [plot_technical_r2()] for before/after plots.
+#' @examples
+#' set.seed(1)
+#' technical <- data.frame(scanner = rnorm(30), field = rnorm(30))
+#' data <- cbind(feature1 = technical$scanner + rnorm(30), feature2 = rnorm(30))
+#' joint <- technical_partial_r2(data, technical, adjust_batch = FALSE,
+#'                               test = "joint")
+#' summarize_r2(joint, method = "Raw")
 #' @export
 technical_partial_r2 <- function(
     data, technical, covar = NULL, bat = NULL, model = stats::lm,
-    formula = y ~ 1, adjust_batch = TRUE, ...
+    formula = y ~ 1, adjust_batch = TRUE, test = c("separate", "joint"), ...
 ) {
+  test <- match.arg(test)
   data <- as.data.frame(data)
   technical <- as.data.frame(technical)
   covar <- if (is.null(covar)) data.frame(row.names = seq_len(nrow(data))) else as.data.frame(covar)
@@ -131,16 +164,29 @@ technical_partial_r2 <- function(
     }, error = function(e) list(rank = NA_integer_, deficient = NA,
                                rss = NA_real_, error = conditionMessage(e)))
   }
-  rows <- vector("list", ncol(data) * ncol(technical))
+  full_formulas <- if (test == "joint") stats::setNames(lapply(technical_names, function(name) {
+    add_terms(biological_formula, c(batch_terms, name))
+  }), technical_names) else NULL
+  rows <- vector("list", ncol(data) * length(technical_names))
   idx <- 1L
   for (feature_name in names(data)) {
     model_data <- base_data
     model_data$y <- data[[feature_name]]
-    frame <- model_data[stats::complete.cases(model_data[, used_vars, drop = FALSE]), , drop = FALSE]
-    full <- if (nrow(frame)) fit_model(full_formula, frame) else
-      list(rank = NA_integer_, deficient = NA, rss = NA_real_, error = "No complete observations for the full model.")
+    if (test == "separate") {
+      frame <- model_data[stats::complete.cases(model_data[, used_vars, drop = FALSE]), , drop = FALSE]
+      full <- if (nrow(frame)) fit_model(full_formula, frame) else
+        list(rank = NA_integer_, deficient = NA, rss = NA_real_, error = "No complete observations for the full model.")
+    }
     for (technical_name in technical_names) {
-      reduced_formula <- add_terms(biological_formula, c(batch_terms, setdiff(technical_names, technical_name)))
+      if (test == "joint") {
+        factor_formula <- full_formulas[[technical_name]]
+        factor_vars <- all.vars(factor_formula)
+        frame <- model_data[stats::complete.cases(model_data[, factor_vars, drop = FALSE]), , drop = FALSE]
+        full <- if (nrow(frame)) fit_model(factor_formula, frame) else
+          list(rank = NA_integer_, deficient = NA, rss = NA_real_, error = "No complete observations for the full model.")
+      }
+      remaining_technical <- if (test == "joint") character() else setdiff(technical_names, technical_name)
+      reduced_formula <- add_terms(biological_formula, c(batch_terms, remaining_technical))
       reduced <- if (nrow(frame)) fit_model(reduced_formula, frame) else full
       errors <- c(if (!is.na(full$error)) paste0("Full model: ", full$error),
                   if (!is.na(reduced$error)) paste0("Reduced model: ", reduced$error))
@@ -165,9 +211,11 @@ technical_partial_r2 <- function(
     }
   }
   out <- do.call(rbind, rows)
-  attr(out, "formula") <- full_formula
+  attr(out, "formula") <- if (test == "joint") full_formulas else full_formula
   attr(out, "model") <- model
   attr(out, "adjust_batch") <- adjust_batch
+  attr(out, "test") <- test
+  attr(out, "technical_factors") <- technical_names
   out
 }
 
@@ -277,8 +325,10 @@ summarize_r2 <- function(x, method = NULL) {
 #'   finite estimates have no box. See [summarize_r2()] for valid/total counts.
 #'
 #'   Duplicate feature/technical-factor keys are rejected. Use the same model
-#'   specification and analysis sample before and after harmonization to make
-#'   the comparison meaningful. See [summarize_r2()] for tabular summaries.
+#'   specification, test mode (`"separate"` or `"joint"`), and analysis sample
+#'   before and after harmonization to make the comparison meaningful. Both test
+#'   modes give one heatmap row or boxplot facet per technical factor.
+#'   See [summarize_r2()] for tabular summaries.
 #' @export
 plot_technical_r2 <- function(raw_result, harmonized_result,
                               type = c("aggregate", "feature"), labels = c("Before", "After"),

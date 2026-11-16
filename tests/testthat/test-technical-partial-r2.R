@@ -395,3 +395,122 @@ test_that("feature boxplots use finite absolute estimates without requiring pair
   expect_equal(nrow(unavailable_built$data[[1]]), 1L)
   expect_equal(unavailable_built$layout$panel_params[[1]]$x$get_labels(), c("Before", "After"))
 })
+
+test_that("joint mode tests each factor against biology and batch alone", {
+  set.seed(81)
+  n <- 60L
+  covar <- data.frame(age = rnorm(n), diagnosis = factor(rep(c("A", "B"), 30)))
+  technical <- data.frame(scanner = rnorm(n), field = rnorm(n))
+  bat <- rep(1:3, each = 20)
+  y <- covar$age + technical$scanner + technical$field + rnorm(n)
+  calls <- 0L
+  counted_lm <- function(...) {
+    calls <<- calls + 1L
+    stats::lm(...)
+  }
+  out <- technical_partial_r2(cbind(a = y, b = y + 1), technical, covar, bat,
+                              formula = y ~ age * diagnosis, model = counted_lm, test = "joint")
+  frame <- data.frame(y, covar, technical, batch = factor(bat))
+  reduced <- lm(y ~ age * diagnosis + batch, frame)
+  scanner_full <- lm(y ~ age * diagnosis + batch + scanner, frame)
+  field_full <- lm(y ~ age * diagnosis + batch + field, frame)
+  expected <- c(1 - sum(residuals(scanner_full)^2) / sum(residuals(reduced)^2),
+                1 - sum(residuals(field_full)^2) / sum(residuals(reduced)^2))
+  expect_equal(nrow(out), 4L)
+  expect_equal(out$Technical, rep(names(technical), 2))
+  expect_equal(out$partial_R2, rep(expected, 2))
+  expect_equal(out$rank_added, rep(1L, 4))
+  expect_equal(calls, 8L)
+  expect_equal(attr(out, "test"), "joint")
+  expect_equal(attr(out, "technical_factors"), names(technical))
+  formulas <- attr(out, "formula")
+  expect_equal(names(formulas), names(technical))
+  expect_false("field" %in% all.vars(formulas$scanner))
+  expect_false("scanner" %in% all.vars(formulas$field))
+  default <- technical_partial_r2(cbind(y), technical, covar, bat, formula = y ~ age)
+  separate <- technical_partial_r2(cbind(y), technical, covar, bat, formula = y ~ age, test = "separate")
+  expect_equal(default, separate)
+  expect_error(technical_partial_r2(cbind(y), technical, bat = bat, test = "marginal"), "arg")
+})
+
+test_that("joint mode includes associations shared with other technical factors", {
+  set.seed(82)
+  scanner <- rnorm(40)
+  technical <- data.frame(scanner, scanner_duplicate = scanner)
+  data <- cbind(a = 2 * scanner + rnorm(40))
+  separate <- technical_partial_r2(data, technical, adjust_batch = FALSE)
+  joint <- technical_partial_r2(data, technical, adjust_batch = FALSE, test = "joint")
+  expect_true(all(separate$status == "non_estimable"))
+  expect_false(any(joint$rank_deficient_full))
+  expect_true(all(joint$rank_added == 1L))
+  expect_true(all(joint$estimable))
+  expect_true(all(joint$partial_R2 > 0.5))
+  expect_equal(joint$partial_R2[1], joint$partial_R2[2])
+  bat <- factor(rep(1:2, each = 20))
+  confounded <- technical_partial_r2(data, data.frame(scanner = bat), bat = bat, test = "joint")
+  expect_equal(confounded$status, "non_estimable")
+  expect_equal(confounded$rank_added, 0L)
+  expect_true(is.na(confounded$partial_R2))
+})
+
+test_that("joint models select complete cases per tested factor without batch adjustment", {
+  set.seed(83)
+  n <- 40L
+  covar <- data.frame(age = rnorm(n), unused = NA_real_)
+  technical <- data.frame(scanner = rnorm(n), field = rnorm(n))
+  technical$field[1] <- NA_real_
+  y <- rnorm(n)
+  y[2] <- NA_real_
+  out <- technical_partial_r2(cbind(y), technical, covar, bat = rep(NA, n),
+                              formula = y ~ age, adjust_batch = FALSE, test = "joint")
+  for (name in names(technical)) {
+    frame <- data.frame(y, age = covar$age, tested = technical[[name]])
+    frame <- frame[complete.cases(frame), ]
+    full <- lm(y ~ age + tested, frame)
+    reduced <- lm(y ~ age, frame)
+    expect_equal(out$partial_R2[out$Technical == name],
+                 1 - sum(residuals(full)^2) / sum(residuals(reduced)^2))
+  }
+  expect_equal(out$n_obs, c(39L, 38L))
+  one <- technical[, "scanner", drop = FALSE]
+  joint_one <- technical_partial_r2(cbind(y), one, adjust_batch = FALSE, test = "joint")
+  separate_one <- technical_partial_r2(cbind(y), one, adjust_batch = FALSE)
+  expect_equal(joint_one$partial_R2, separate_one$partial_R2)
+  expect_equal(joint_one$rank_added, separate_one$rank_added)
+  all_missing <- technical
+  all_missing$field[] <- NA_real_
+  mixed <- technical_partial_r2(cbind(y), all_missing, adjust_batch = FALSE, test = "joint")
+  expect_true(is.finite(mixed$partial_R2[1]))
+  expect_equal(mixed$status[2], "fit_error")
+  expect_equal(mixed$n_obs[2], 0L)
+  broken <- technical_partial_r2(cbind(y), technical, adjust_batch = FALSE, test = "joint",
+                                 model = function(...) stop("Joint fitting error"))
+  expect_true(all(broken$status == "fit_error"))
+  expect_match(broken$error[1], "Joint fitting error")
+})
+
+test_that("joint GAM comparisons and visualizations retain individual technical names", {
+  skip_if_not_installed("mgcv")
+  set.seed(84)
+  n <- 60L
+  covar <- data.frame(age = runif(n))
+  technical <- data.frame(scanner = rnorm(n), field = rnorm(n))
+  y <- sin(6 * covar$age) + technical$scanner + technical$field + rnorm(n, sd = 0.2)
+  out <- technical_partial_r2(cbind(a = y, b = y + rnorm(n, sd = 0.1)), technical, covar,
+                              adjust_batch = FALSE, test = "joint", model = mgcv::gam,
+                              formula = y ~ s(age, k = 5), method = "REML")
+  frame <- data.frame(y, covar, technical)
+  full <- mgcv::gam(y ~ s(age, k = 5) + scanner, data = frame, method = "REML")
+  reduced <- mgcv::gam(y ~ s(age, k = 5), data = frame, method = "REML")
+  expect_equal(out$partial_R2[1], 1 - sum(residuals(full)^2) / sum(residuals(reduced)^2))
+  summary <- summarize_r2(out, "Raw")
+  expect_equal(summary$Technical, names(technical))
+  expect_equal(summary$n_valid, c(2L, 2L))
+  aggregate <- plot_technical_r2(out, list(CALM = out))
+  expect_equal(as.character(aggregate$data$Technical), names(technical))
+  expect_equal(aggregate$data$median_delta_r2, c(0, 0))
+  expect_equal(nrow(ggplot2::ggplot_build(aggregate)$data[[1]]), 2L)
+  boxplot <- plot_technical_r2(out, list(CALM = out), type = "feature")
+  expect_equal(levels(boxplot$data$Method), c("Before", "CALM"))
+  expect_equal(nrow(ggplot2::ggplot_build(boxplot)$data[[1]]), 4L)
+})

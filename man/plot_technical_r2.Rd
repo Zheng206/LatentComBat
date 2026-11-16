@@ -67,6 +67,8 @@ unavailable estimates remain in the plot's \code{data} component. Groups without
 finite estimates have no box. See \code{\link[=summarize_r2]{summarize_r2()}} for valid/total counts.
 
 Duplicate feature/technical-factor keys are rejected. Use the same model
-specification and analysis sample before and after harmonization to make
-the comparison meaningful. See \code{\link[=summarize_r2]{summarize_r2()}} for tabular summaries.
+specification, test mode (\code{"separate"} or \code{"joint"}), and analysis sample
+before and after harmonization to make the comparison meaningful. Both test
+modes give one heatmap row or boxplot facet per technical factor.
+See \code{\link[=summarize_r2]{summarize_r2()}} for tabular summaries.
 }
